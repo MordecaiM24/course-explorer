@@ -40,20 +40,11 @@ class CoursescraperPipeline:
     def parse_restrictions(self, text, primary_department):
         """
         Parses the restrictions text and extracts prerequisites, corequisites,
-        and other restrictions.
+        and other restrictions, tagging and/or relationships.
         """
         prerequisites = []
         corequisites = []
         other_restrictions = []
-
-        # Normalize the text
-        text = text.replace("Prerequisite", "Prerequisite")
-        text = text.replace("prerequisite", "Prerequisite")
-        text = text.replace("Corequisite", "Corequisite")
-        text = text.replace("corequisite", "Corequisite")
-        text = text.replace("Co-requisite", "Corequisite")
-        text = text.replace("co-requisite", "Corequisite")
-        text = text.replace("Restricition", "Restriction")  # Fix common typos if any
 
         # Regex patterns
         prereq_pattern = r"Prerequisite[s]?:\s*([^;:\n]+)"
@@ -78,9 +69,9 @@ class CoursescraperPipeline:
             if match.strip():
                 other_restrictions.append(match.strip())
 
-        # Further processing to extract course codes from prerequisites and corequisites
-        prerequisites = self.extract_course_codes(prerequisites, primary_department)
-        corequisites = self.extract_course_codes(corequisites, primary_department)
+        # Parse and tag relationships within each category
+        prerequisites = self.tag_and_or_relationships(prerequisites, primary_department)
+        corequisites = self.tag_and_or_relationships(corequisites, primary_department)
         other_restrictions = [res.strip() for res in other_restrictions if res.strip()]
 
         return {
@@ -88,6 +79,33 @@ class CoursescraperPipeline:
             "corequisites": corequisites if corequisites else None,
             "other_restrictions": other_restrictions if other_restrictions else None,
         }
+
+    def tag_and_or_relationships(self, restriction_list, primary_department):
+        """
+        Takes a list of restriction texts and tags each course code with 'o' (or) or 'a' (and).
+        """
+        tagged_courses = []
+        for restriction in restriction_list:
+            tokens = re.findall(
+                r"(\band\b|\bor\b|[A-Z]{2,4}\s*\d{3}|\d{3})", restriction, re.IGNORECASE
+            )
+            current_op = None
+            for token in tokens:
+                token = token.strip().lower()
+                if token == "and":
+                    current_op = "a"
+                elif token == "or":
+                    current_op = "o"
+                elif re.match(r"[A-Z]{2,4}\s*\d{3}|\d{3}", token):
+                    course_code = token.upper().replace(" ", "")
+                    if not re.match(
+                        r"[A-Z]{2,4}\d{3}", course_code
+                    ):  # incomplete course code
+                        course_code = f"{primary_department}{course_code}"
+                    tagged_courses.append(
+                        course_code + (current_op or "a")
+                    )  # default to "and" if no operator set
+        return tagged_courses
 
     def extract_course_codes(self, texts, primary_department):
         """
