@@ -1,4 +1,8 @@
 Types of restrictions:
+
+Find 3 consecutive numbers, look at string before it, see if there's P?
+Look for term prerequisite, then find first 3 digit number after, then find department name from enum before it?
+
 Base Restrictions:
 "restrictions": null
 "restrictions": "Prerequisite: course_code"

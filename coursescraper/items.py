@@ -8,9 +8,12 @@ import scrapy
 
 class CourseItem(scrapy.Item):
     # define the fields for your item here like:
-    # name = scrapy.Field()
+    department = scrapy.Field()
     code = scrapy.Field()
     name = scrapy.Field()
     hours = scrapy.Field()
     description = scrapy.Field()
-    restrictions = scrapy.Field()
+    restrictions_text = scrapy.Field()  # Keep the raw restrictions text if needed
+    prerequisites = scrapy.Field()
+    corequisites = scrapy.Field()
+    other_restrictions = scrapy.Field()
