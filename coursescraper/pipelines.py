@@ -56,9 +56,14 @@ class CoursescraperPipeline:
         text = text.replace("Restricition", "Restriction")  # Fix common typos if any
 
         # Regex patterns
-        prereq_pattern = r"Prerequisite[s]?:\s*([^;:\n]+)"
-        coreq_pattern = r"Corequisite[s]?:\s*([^;:\n]+)"
-        other_pattern = r"(?!Prerequisite[s]?|Corequisite[s]?:)([^;:\n]+)"
+        # prereq_pattern = r"Prerequisite[s]?:\s*([^;:\n]+)"
+        # coreq_pattern = r"Corequisite[s]?:\s*([^;:\n]+)"
+        # other_pattern = r"(?!Prerequisite[s]?|Corequisite[s]?:)([^;:\n]+)"
+
+        # updated patterns
+        prereq_pattern = r"[Pp](?:rereq(?:uisite)?s?)?:\s*([^;:\n]+)"  # matches capital and lowercase p, then optionally the string "rereq", the optionally the rest of that, and more optionally the plural s
+        coreq_pattern = r"[Cc](?:oreq(?:uisite)?s?)?:\s*([^;:\n]+)"  # matches capital and lowercase c, then optionally the string "oreq", the optionally the rest of that, and more optionally the plural s
+        other_pattern = r"(?![Pp](?:rereq(?:uisite)?s?)?|[Cc](?:oreq(?:uisite)?s?)?:)([^;:\n]+)"  # matches anything that is not a prerequisite or corequisite to put in the other restrictions
 
         # Extract prerequisites
         prereq_matches = re.findall(prereq_pattern, text, re.IGNORECASE)
@@ -97,7 +102,7 @@ class CoursescraperPipeline:
         course_codes = []
         # Define a regex pattern for course codes, e.g., CHE 312 or CHE312, or just 312
         # Pattern captures either DEPT CODE + number or just number
-        pattern = r"([A-Z]{2,4})\s*(\d{3})|(\d{3})"
+        pattern = r"([A-Z]{1,4})\s*(\d{3})|(\d{3})"
 
         for text in texts:
             current_dept = None
