@@ -40,16 +40,30 @@ class CoursescraperPipeline:
     def parse_restrictions(self, text, primary_department):
         """
         Parses the restrictions text and extracts prerequisites, corequisites,
-        and other restrictions, tagging and/or relationships.
+        and other restrictions.
         """
         prerequisites = []
         corequisites = []
         other_restrictions = []
 
+        # Normalize the text
+        text = text.replace("Prerequisite", "Prerequisite")
+        text = text.replace("prerequisite", "Prerequisite")
+        text = text.replace("Corequisite", "Corequisite")
+        text = text.replace("corequisite", "Corequisite")
+        text = text.replace("Co-requisite", "Corequisite")
+        text = text.replace("co-requisite", "Corequisite")
+        text = text.replace("Restricition", "Restriction")  # Fix common typos if any
+
         # Regex patterns
-        prereq_pattern = r"Prerequisite[s]?:\s*([^;:\n]+)"
-        coreq_pattern = r"Corequisite[s]?:\s*([^;:\n]+)"
-        other_pattern = r"(?!Prerequisite[s]?|Corequisite[s]?:)([^;:\n]+)"
+        # prereq_pattern = r"Prerequisite[s]?:\s*([^;:\n]+)"
+        # coreq_pattern = r"Corequisite[s]?:\s*([^;:\n]+)"
+        # other_pattern = r"(?!Prerequisite[s]?|Corequisite[s]?:)([^;:\n]+)"
+
+        # updated patterns
+        prereq_pattern = r"[Pp](?:rereq(?:uisite)?s?)?:\s*([^;:\n]+)"  # matches capital and lowercase p, then optionally the string "rereq", the optionally the rest of that, and more optionally the plural s
+        coreq_pattern = r"[Cc](?:oreq(?:uisite)?s?)?:\s*([^;:\n]+)"  # matches capital and lowercase c, then optionally the string "oreq", the optionally the rest of that, and more optionally the plural s
+        other_pattern = r"(?![Pp](?:rereq(?:uisite)?s?)?|[Cc](?:oreq(?:uisite)?s?)?:)([^;:\n]+)"  # matches anything that is not a prerequisite or corequisite to put in the other restrictions
 
         # Extract prerequisites
         prereq_matches = re.findall(prereq_pattern, text, re.IGNORECASE)
@@ -69,9 +83,9 @@ class CoursescraperPipeline:
             if match.strip():
                 other_restrictions.append(match.strip())
 
-        # Parse and tag relationships within each category
-        prerequisites = self.tag_and_or_relationships(prerequisites, primary_department)
-        corequisites = self.tag_and_or_relationships(corequisites, primary_department)
+        # Further processing to extract course codes from prerequisites and corequisites
+        prerequisites = self.extract_course_codes(prerequisites, primary_department)
+        corequisites = self.extract_course_codes(corequisites, primary_department)
         other_restrictions = [res.strip() for res in other_restrictions if res.strip()]
 
         return {
@@ -79,33 +93,6 @@ class CoursescraperPipeline:
             "corequisites": corequisites if corequisites else None,
             "other_restrictions": other_restrictions if other_restrictions else None,
         }
-
-    def tag_and_or_relationships(self, restriction_list, primary_department):
-        """
-        Takes a list of restriction texts and tags each course code with 'o' (or) or 'a' (and).
-        """
-        tagged_courses = []
-        for restriction in restriction_list:
-            tokens = re.findall(
-                r"(\band\b|\bor\b|[A-Z]{2,4}\s*\d{3}|\d{3})", restriction, re.IGNORECASE
-            )
-            current_op = None
-            for token in tokens:
-                token = token.strip().lower()
-                if token == "and":
-                    current_op = "a"
-                elif token == "or":
-                    current_op = "o"
-                elif re.match(r"[A-Z]{2,4}\s*\d{3}|\d{3}", token):
-                    course_code = token.upper().replace(" ", "")
-                    if not re.match(
-                        r"[A-Z]{2,4}\d{3}", course_code
-                    ):  # incomplete course code
-                        course_code = f"{primary_department}{course_code}"
-                    tagged_courses.append(
-                        course_code + (current_op or "a")
-                    )  # default to "and" if no operator set
-        return tagged_courses
 
     def extract_course_codes(self, texts, primary_department):
         """
@@ -115,7 +102,7 @@ class CoursescraperPipeline:
         course_codes = []
         # Define a regex pattern for course codes, e.g., CHE 312 or CHE312, or just 312
         # Pattern captures either DEPT CODE + number or just number
-        pattern = r"([A-Z]{2,4})\s*(\d{3})|(\d{3})"
+        pattern = r"([A-Z]{1,4})\s*(\d{3})|(\d{3})"
 
         for text in texts:
             current_dept = None
