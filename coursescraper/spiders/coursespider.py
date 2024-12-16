@@ -1,5 +1,6 @@
 import scrapy
 from coursescraper.items import CourseItem
+import unicodedata
 
 
 class CoursespiderSpider(scrapy.Spider):
@@ -23,10 +24,16 @@ class CoursespiderSpider(scrapy.Spider):
         department = response.meta.get("department")
         courses = response.css("div.courseblock")
         for course in courses:
-            code_parts = course.css(
-                "div.cols .detail-coursecode strong::text, div.cols .detail-coursecode strong a::text"
-            ).getall()
-            code = " ".join(code_parts).strip().replace(" ", "").upper()
+            code_parts = [
+                unicodedata.normalize("NFKD", part)
+                .strip()
+                .replace("\u00a0", "")
+                .replace(" ", "")
+                for part in course.css(
+                    "div.cols .detail-coursecode strong::text, div.cols .detail-coursecode strong a::text"
+                ).getall()
+            ]
+            code = "".join(code_parts).upper()
 
             name = course.css("div.cols .detail-title strong::text").get()
             hours = course.css("div.cols .detail-hours_html::text").get()
