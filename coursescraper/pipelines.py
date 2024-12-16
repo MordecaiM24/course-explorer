@@ -30,6 +30,12 @@ class CoursescraperPipeline:
         # Parse restrictions_text into prerequisites, corequisites, and other_restrictions
         restrictions_text = adapter.get("restrictions_text")
         if restrictions_text:
+            # remove everything starting with "not"
+            restrictions_text = re.sub(
+                r"\bnot\b.*", "", restrictions_text, flags=re.IGNORECASE
+            ).strip()
+            adapter["restrictions_text"] = restrictions_text
+
             parsed_restrictions = self.parse_restrictions(
                 restrictions_text, adapter.get("department")
             )
